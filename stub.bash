@@ -24,6 +24,16 @@ usage () {
   echo "${0} \$arg1 \$arg2 \\\"sub_arg1 sub_arg2\\\"... argn"
 }
 
+get_hash_command(){
+  hash_command_list="shasum shasum1"
+  hash_command_array=(${hash_command_list})
+  for item in "${hash_command_array[@]}"; do
+    [[ $(command -v "${item}") ]] && { hash_cmd="${item}"; break; }
+  done
+  [[ ! ${hash_cmd} ]] && { echo "No comand: """${hash_command_list}""" found"; exit 1; }
+  echo "${item}"
+}
+
 # function: Stub program
 stub_command() {
   cmd_to_run="$(cat $1)"
@@ -50,18 +60,18 @@ stub_command() {
   if [ "${env_path}" != "${binstubs_dir}" ]; then
      {
      echo ""
-     echo "## Added by stub.sh"
+     echo "## Added by stub.bash"
      echo "export PATH=${binstubs_dir}:.:\$PATH"
    }  >> "${env_home}/.bash_profile"
 
-    . "${env_home}/.bash_profile"
+    echo "-------------- IMPORTANT ------------------"
+    echo "stub.bash ran for the first time. Don't forget to run ." "${env_home}/.bash_profile"
+    echo "or disconnect and reconnect in orden prepend path for binstub applies."
+    echo "-------------------------------------------"
   fi
 
   ## Get Hash utility
-  hash_cmd=""
-  [[ $(command -v shasum) ]] && { hash_cmd="shasum"; }
-  [[ $(command -v sha1sum) ]] && { hash_cmd="sha1sum"; }
-  [[ ! ${hash_cmd} ]] && { echo "No sha1sum or shasum found"; exit 1; }
+  hash_cmd="$(get_hash_command)"
 
   ## Get hash for cmd_to_run without arguments
   cmd_to_run_hash="$(echo "${cmd_to_run}" | "${hash_cmd}" | awk '{print $1}')"
@@ -70,6 +80,7 @@ stub_command() {
   ## Generate files
 
   cache_file="${filestubs_dir}/.stub.cache.tmp"
+  cache_cmd="${filestubs_dir}/.stub.cachecmd.tmp"
   stderr_file="${filestubs_dir}/.stub.stderr.${cmd_to_run_hash}.tmp"
   stdout_file="${filestubs_dir}/.stub.stdout.${cmd_to_run_hash}.tmp"
   origcmd_file="${filestubs_dir}/.stub.origcmd.${cmd_to_run_hash}.tmp"
@@ -79,6 +90,7 @@ stub_command() {
   chmod 755 "${origcmd_file}"
   ## if cache file does not exist create it
   [[ ! -f ${cache_file} ]] && { touch "${cache_file}" ; }
+  [[ ! -f ${cache_cmd} ]] && { touch "${cache_cmd}" ; }
 
   ## Determines whether cmd_to_run with arguments hash exists on cache
   grep -q ${cmd_to_run_hash} ${cache_file}
@@ -98,54 +110,42 @@ stub_command() {
      echo "------------------- STDOUT ------------------------"
      cat  "${stdout_file}"
      echo "------------------- STDOUT ------------------------"
-     alias_cmd="$(echo ${cmd_to_run} | awk '{print $1}')"
+     ##alias_cmd="$(echo ${cmd_to_run} | awk '{print $1}')"
+     stub_cmd_launcher=".stub_cmd_launcher.bash"
 
      echo "------------------- STDERR ------------------------"
      cat  "${stderr_file}"
      echo "------------------- STDERR ------------------------"
 
      ## Record cmd_to_run on cache
-     echo "${cmd_to_run_hash}:${cmd_to_run_noargs_hash}:$(echo ${cmd_retcode}):${stdout_file}:${stderr_file}:${origcmd_file}:${full_path_cmd_to_run}:" >> ${cache_file}
+     ## Parameters:
+     ##    1. Original Command hash
+     ##    2. Original Command File
+     ##    3. Return code
+     ##    4. STDOUT file
+     ##    5. STDERR files
+     echo "${cmd_to_run_hash}:${origcmd_file}:$(echo ${cmd_retcode}):${stdout_file}:${stderr_file}:${full_path_cmd_to_run}" >> ${cache_file}
+
+     ## Record cmd_to_run_noargs on cache
+     ## Parameters:
+     ##    1. Original Command noargs hash
+     ##    2. Original Command noargs
+     ##    3. Full Path Original Command
+     grep -q ${cmd_to_run_noargs_hash} ${cache_cmd}
+     is_cmd_hash_cached=$?
+
+     if [[ "${is_cmd_hash_cached}" != "0" ]]; then
+        echo "${cmd_to_run_noargs_hash}:${cmd_to_run_noargs}:${full_path_cmd_to_run}:" >> ${cache_cmd}
+     fi
+
      echo "Successfully added \""""$(cat ${origcmd_file})"""\" to stub cache"
 
-     ## Creates stub cmd
-     {
-          echo "#!/usr/bin/env bash"
-          echo "## Validate """../${cache_file}""" exists"
-          echo ""
-          echo "[[ ! -f """${cache_file}""" ]] && { echo """Error: Cache File ${cache_file} does not exist"""; exit 1; }"
-          echo ""
-          echo "## Get cmd_to_run with args on cache and compares with stub_cmd"
-          ##echo "stubcmd_to_run=\"$(grep ${cmd_hash} """${cache_file}""" | sed """s/:/ /g""" | awk '{print $6}' | sed """s/${cache_space}/ /g""")\""
-          echo "stubcmd_to_run=\""""$(head -1 """${origcmd_file}"""| sed """s/\"/\\\\\"/g""")"""\""
-          echo "stubcmd_prefix=\"\$(echo """\${stubcmd_to_run}""" | awk '{print \$1}')\""
-          echo "stubcmd_to_run_args="""\${stubcmd_to_run#\$stubcmd_prefix}""""
-          echo "stubcmd_to_run_args="""\${stubcmd_to_run_args#\ }""""
-          echo ""
-          ###echo "echo \"\${stubcmd_to_run_args}\":\$*:"
-          echo "if [ \"\$*\" == \"\${stubcmd_to_run_args}\" ]; then"
-          echo "    ## if \\$\\@ match, no run and show cache stderr, stdout and returns cache return code"
-          echo ""
-          echo "    cat """${stdout_file}""""
-          echo "    [[ -s """${stderr_file}""" ]] && { cat """${stderr_file}""" > @2 ; }"
-          ###echo "    echo """no run""" "
-          echo "    exit """${cmd_retcode}""""
-          echo "else"
-          echo "    ## if \\$\\@ does not match, run command from original location (cached) with arguments"
-          echo "    stubcmd_to_run=""\$(grep \"${cmd_hash}\"  \"${cache_file}\"  | sed \"s/:/ /g\" | awk '{print \$7}')"
-          echo "    echo \${stubcmd_to_run} \${*}"
-          echo "    eval \${stubcmd_to_run} \${*}"
-          ###echo "    echo run"
-          echo "fi"
-      } > "${binstubs_dir}/${cmd_to_run_noargs_hash}.bash"
-
-      ##cat "${binstubs_dir}/${cmd_hash}.bash"
-      chmod 755 "${binstubs_dir}/${cmd_to_run_noargs_hash}.bash"
-
-      ## Link stub cmd on "./"
-      cd ${binstubs_dir}
-      ln -s "${cmd_to_run_noargs_hash}.bash" "${alias_cmd}"
-      cd -
+     ## In case link for command does not exist yet
+     if [[ ! -f "${binstubs_dir}/${cmd_to_run_noargs}" ]]; then
+       cd ${binstubs_dir}
+       ln -s "../${stub_cmd_launcher}" "${cmd_to_run_noargs}"
+       cd - 2>&1> /dev/null
+     fi
   fi
 
 }
@@ -153,9 +153,6 @@ stub_command() {
 
 while getopts ":h" arg; do
   case $arg in
-    r)
-      exp_retcode="${OPTARG}"
-      ;;
     h)
       usage
       exit 1
