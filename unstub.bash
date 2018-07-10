@@ -25,21 +25,19 @@ usage () {
 }
 
 get_hash_command(){
-  hash_command_list="shasum shasum1"
-  hash_command_array=(${hash_command_list})
-  for item in "${hash_command_array[@]}"; do
+  hash_command_array=(shasum shasum1)
+  for item in "${hash_command_array[@]}" ; do
     [[ $(command -v "${item}") ]] && { hash_cmd="${item}"; break; }
   done
-  [[ ! ${hash_cmd} ]] && { echo "No comand: """${hash_command_list}""" found"; exit 1; }
-  echo "${item}"
+  echo "${hash_cmd}"
 }
 
 # function: Stub program
 unstub_command() {
-  cmd_to_run="$(cat $1)"
+  cmd_to_run="$(cat """$1""")"
   cmd_to_run_noargs="$(echo """${cmd_to_run}""" | awk '{print $1}')"
   # Gets full path for cmd to run without arguments
-  full_path_cmd_to_run="$(command -v $(echo ${cmd_to_run} | awk '{print $1}') )"
+  ###full_path_cmd_to_run="$(command -v $(echo ${cmd_to_run} | awk '{print $1}') )"
 
   ## declare and create script files and dirs
   binstubs_dir=".binstub"
@@ -49,6 +47,10 @@ unstub_command() {
 
   ## Get Hash utility
   hash_cmd="$(get_hash_command)"
+  if [[ ! ${hash_cmd} ]]; then
+     echo "No comand shasum or sha1sum found"
+     exit 1
+  fi
 
   ## Get hash for cmd_to_run without arguments
   cmd_to_run_hash="$(echo "${cmd_to_run}" | "${hash_cmd}" | awk '{print $1}')"
@@ -79,24 +81,24 @@ unstub_command() {
 
      ## Run command with arguments and saves stderr, stdout and return code
      echo "------------------Stubbed Command------------------"
-     echo "Command:       """$(cat ${origcmd_file})""""
-     ${origcmd_file} 2>${stderr_file} 1>${stdout_file}
+     echo "Command:       \"$(cat """${origcmd_file}""")\""
+     ${origcmd_file} 2>"${stderr_file}" 1>"${stdout_file}"
      cmd_retcode=$?
 
-     echo "Return Code:   """${cmd_retcode}""""
+     echo "Return Code:   \"${cmd_retcode}\""
      echo "------------------- STDOUT ------------------------"
      cat  "${stdout_file}"
      echo "------------------- STDOUT ------------------------"
      ##alias_cmd="$(echo ${cmd_to_run} | awk '{print $1}')"
-     stub_cmd_launcher=".stub_cmd_launcher.bash"
+     #stub_cmd_launcher=".stub_cmd_launcher.bash"
 
      echo "------------------- STDERR ------------------------"
      cat  "${stderr_file}"
      echo "------------------- STDERR ------------------------"
      echo ""
-     echo "Removing origcmd file:         """${origcmd_file}""""
-     echo "Removing stdout file:          """${stdout_file}""""
-     echo "Removing stderr file:          """${stderr_file}""""
+     echo "Removing origcmd file:         \"${origcmd_file}\""
+     echo "Removing stdout file:          \"${stdout_file}\""
+     echo "Removing stderr file:          \"${stderr_file}\""
 
      ## Delete entry from cache
 
@@ -105,12 +107,12 @@ unstub_command() {
      rm ${cache_file}.tmp
 
      # Validates if command (with other arguments) still exists in cache
-     grep -q ${cmd_to_run_noargs} ${cache_file}
+     grep -q "${cmd_to_run_noargs}" "${cache_file}"
      is_cmd_hash_cached=$?
 
      if [[ "${is_cmd_hash_cached}" != "0" ]]; then
        ## Delete entry from command without args cache
-       grep -q ${cmd_to_run_noargs_hash} ${cache_cmd}
+       grep -q "${cmd_to_run_noargs_hash}" "${cache_cmd}"
        is_cmd_hash_cached=$?
 
        if [[ "${is_cmd_hash_cached}" == "0" ]]; then
@@ -126,7 +128,7 @@ unstub_command() {
      rm "${stderr_file}"
 
      echo "---------------------------------------------------"
-     echo "Successfully removed \""""$(cat ${origcmd_file})"""\" from stub cache"
+     echo "Successfully removed \"$(cat """${origcmd_file}""")\" from stub cache"
      rm "${origcmd_file}"
   else
     echo "NO \"${cmd_to_run}\" command found on cache"
@@ -136,7 +138,7 @@ unstub_command() {
 }
 
 
-while getopts ":h" arg; do
+while getopts ":ah" arg; do
   case $arg in
     a)
       delete_all="Y"

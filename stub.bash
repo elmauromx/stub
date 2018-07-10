@@ -25,22 +25,19 @@ usage () {
 }
 
 get_hash_command(){
-  hash_command_list="shasum shasum1"
-  hash_command_array=(${hash_command_list})
-  for item in "${hash_command_array[@]}"; do
+  hash_command_array=(shasum shasum1)
+  for item in "${hash_command_array[@]}" ; do
     [[ $(command -v "${item}") ]] && { hash_cmd="${item}"; break; }
   done
-  [[ ! ${hash_cmd} ]] && { echo "No comand: """${hash_command_list}""" found"; exit 1; }
-  echo "${item}"
+  echo "${hash_cmd}"
 }
 
 # function: Stub program
 stub_command() {
-  cmd_to_run="$(cat $1)"
+  cmd_to_run="$(cat """$1""")"
   cmd_to_run_noargs="$(echo """${cmd_to_run}""" | awk '{print $1}')"
   # Gets full path for cmd to run without arguments
-  full_path_cmd_to_run="$(command -v $(echo ${cmd_to_run} | awk '{print $1}') )"
-  cache_space="##__##"
+  full_path_cmd_to_run="$(command -v """$(echo """${cmd_to_run}""" | awk '{print $1}')""" )"
 
   ## declare and create script files and dirs
   binstubs_dir=".binstub"
@@ -72,6 +69,10 @@ stub_command() {
 
   ## Get Hash utility
   hash_cmd="$(get_hash_command)"
+  if [[ ! ${hash_cmd} ]]; then
+     echo "No comand shasum or sha1sum found"
+     exit 1
+  fi
 
   ## Get hash for cmd_to_run without arguments
   cmd_to_run_hash="$(echo "${cmd_to_run}" | "${hash_cmd}" | awk '{print $1}')"
@@ -86,14 +87,14 @@ stub_command() {
   origcmd_file="${filestubs_dir}/.stub.origcmd.${cmd_to_run_hash}.tmp"
 
   ## Copy original Command
-  cp $1 "${origcmd_file}"
+  cp "$1" "${origcmd_file}"
   chmod 755 "${origcmd_file}"
   ## if cache file does not exist create it
   [[ ! -f ${cache_file} ]] && { touch "${cache_file}" ; }
   [[ ! -f ${cache_cmd} ]] && { touch "${cache_cmd}" ; }
 
   ## Determines whether cmd_to_run with arguments hash exists on cache
-  grep -q ${cmd_to_run_hash} ${cache_file}
+  grep -q "${cmd_to_run_hash}" "${cache_file}"
   is_hash_cached=$?
 
   ###echo "${cache_file}:${is_hash_cached} "
@@ -102,11 +103,11 @@ stub_command() {
 
      ## Run command with arguments and saves stderr, stdout and return code
 
-     echo "Command:       """$(cat ${origcmd_file})""""
-     ${origcmd_file} 2>${stderr_file} 1>${stdout_file}
+     echo "Command:       \"$(cat """${origcmd_file}""")\""
+     "${origcmd_file}" 2>"${stderr_file}" 1>"${stdout_file}"
      cmd_retcode=$?
 
-     echo "Return Code:   """${cmd_retcode}""""
+     echo "Return Code:   \"${cmd_retcode}\""
      echo "------------------- STDOUT ------------------------"
      cat  "${stdout_file}"
      echo "------------------- STDOUT ------------------------"
@@ -124,27 +125,27 @@ stub_command() {
      ##    3. Return code
      ##    4. STDOUT file
      ##    5. STDERR files
-     echo "${cmd_to_run_hash}:${origcmd_file}:$(echo ${cmd_retcode}):${stdout_file}:${stderr_file}:${full_path_cmd_to_run}" >> ${cache_file}
+     echo "${cmd_to_run_hash}:${origcmd_file}:${cmd_retcode}:${stdout_file}:${stderr_file}:${full_path_cmd_to_run}" >> ${cache_file}
 
      ## Record cmd_to_run_noargs on cache
      ## Parameters:
      ##    1. Original Command noargs hash
      ##    2. Original Command noargs
      ##    3. Full Path Original Command
-     grep -q ${cmd_to_run_noargs_hash} ${cache_cmd}
+     grep -q "${cmd_to_run_noargs_hash}" "${cache_cmd}"
      is_cmd_hash_cached=$?
 
      if [[ "${is_cmd_hash_cached}" != "0" ]]; then
         echo "${cmd_to_run_noargs_hash}:${cmd_to_run_noargs}:${full_path_cmd_to_run}:" >> ${cache_cmd}
      fi
 
-     echo "Successfully added \""""$(cat ${origcmd_file})"""\" to stub cache"
+     echo "Successfully added \"$(cat """${origcmd_file}""")\" to stub cache"
 
      ## In case link for command does not exist yet
      if [[ ! -f "${binstubs_dir}/${cmd_to_run_noargs}" ]]; then
-       cd ${binstubs_dir}
+       cd "${binstubs_dir}" || exit 1
        ln -s "../${stub_cmd_launcher}" "${cmd_to_run_noargs}"
-       cd - 2>&1> /dev/null
+       cd - >/dev/null 2>&1 || exit 1
      fi
   fi
 
