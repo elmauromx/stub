@@ -37,7 +37,7 @@ stub_command() {
   cmd_to_run="$(cat """$1""")"
   cmd_to_run_noargs="$(echo """${cmd_to_run}""" | awk '{print $1}')"
   # Gets full path for cmd to run without arguments
-  full_path_cmd_to_run="$(command -v """$(echo """${cmd_to_run}""" | awk '{print $1}')""" )"
+  full_path_cmd_to_run="$(which """$(echo """${cmd_to_run}""" | awk '{print $1}')""" )"
 
   ## declare and create script files and dirs
   binstubs_dir=".binstub"

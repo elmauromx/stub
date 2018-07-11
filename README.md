@@ -27,8 +27,111 @@ In a nushell this script do the following:
 ```bash
 stub.bash command arg1 arg2 \"arg3 arg4\" arg5 ... argn
 ```
+Note. Keep in mind that if you requiere to pass double quoting mark " on arguments, it must be escaped
 ### unstub.bash
 ```bash
 stub.bash command arg1 arg2 \"arg3 arg4\" arg5 ... argn
 ```
+Note. Keep in mind that if you requiere to pass double quoting mark " on arguments, it must be escaped
 ## Examples
+
+### Stub command 'date +%s'
+```bash
+stub.bash date +%s
+```
+you should see output similar to:
+```bash
+Command:       "date +%s"
+Return Code:   "0"
+------------------- STDOUT ------------------------
+1531273997
+------------------- STDOUT ------------------------
+------------------- STDERR ------------------------
+------------------- STDERR ------------------------
+Successfully added "date +%s" to stub cache
+```
+Now, you are able to run command 'date +%s' from command line, and the output will be always the cached one: 1531273997
+```bash
+date +%s
+1531273997
+```
+
+```bash
+date +%s
+1531273997
+```
+But if you run date command with different arguments, it should be run from its original location (and output would vary depending on arguments). Examples:
+```bash
+date
+Tue Jul 10 20:57:37 CDT 2018
+```
+```bash
+date +%Y%m%d-%H%M%S
+20180710-205922
+```
+```bash
+date +%Y%m%d-%H%M%S
+20180710-205945
+```
+### Unstub command 'date +%s'
+```bash
+unstub.bash date +%s
+```
+you should see output similar to:
+```bash
+------------------Stubbed Command------------------
+Command:       "date +%s"
+Return Code:   "0"
+------------------- STDOUT ------------------------
+------------------- STDOUT ------------------------
+------------------- STDERR ------------------------
+------------------- STDERR ------------------------
+
+Removing origcmd file:         ".stubfiles/.stub.origcmd.411874bf167dc5c4a77c58d610f8d29054996c39.tmp"
+Removing stdout file:          ".stubfiles/.stub.stdout.411874bf167dc5c4a77c58d610f8d29054996c39.tmp"
+Removing stderr file:          ".stubfiles/.stub.stderr.411874bf167dc5c4a77c58d610f8d29054996c39.tmp"
+---------------------------------------------------
+Successfully removed "date +%s" from stub cache
+```
+### Stub command 'date \"+%Y%m%d %H%M%S\"'
+Whenever you need to add double quote mark, you need to escape it. Example:
+```bash
+stub.bash date \"+%Y%m%d %H%M%S\"
+```
+you should see output similar to:
+```bash
+Command:       "date "+%Y%m%d %H%M%S""
+Return Code:   "0"
+------------------- STDOUT ------------------------
+20180710 211811
+------------------- STDOUT ------------------------
+------------------- STDERR ------------------------
+------------------- STDERR ------------------------
+```
+Now, you are able to run command 'date \"+%Y%m%d %H%M%S\"' from command line and the output will be always the cached one: '20180710 211811'.
+Remember to escape double quoute marks or cached command will never match.
+```bash
+date \"+%Y%m%d %H%M%S\"
+20180710 211811
+```
+### Untub command 'date \"+%Y%m%d %H%M%S\"'
+Whenever you need to add double quote mark, you need to escape it. Example:
+```bash
+unstub.bash date \"+%Y%m%d %H%M%S\"
+```
+you should see output similar to:
+```bash
+------------------Stubbed Command------------------
+Command:       "date "+%Y%m%d %H%M%S""
+Return Code:   "0"
+------------------- STDOUT ------------------------
+------------------- STDOUT ------------------------
+------------------- STDERR ------------------------
+------------------- STDERR ------------------------
+
+Removing origcmd file:         ".stubfiles/.stub.origcmd.1217fc928199887a48364ef287b16d5e2336e08f.tmp"
+Removing stdout file:          ".stubfiles/.stub.stdout.1217fc928199887a48364ef287b16d5e2336e08f.tmp"
+Removing stderr file:          ".stubfiles/.stub.stderr.1217fc928199887a48364ef287b16d5e2336e08f.tmp"
+---------------------------------------------------
+Successfully removed "date "+%Y%m%d %H%M%S"" from stub cache
+```

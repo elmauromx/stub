@@ -82,7 +82,7 @@ unstub_command() {
      ## Run command with arguments and saves stderr, stdout and return code
      echo "------------------Stubbed Command------------------"
      echo "Command:       \"$(cat """${origcmd_file}""")\""
-     ${origcmd_file} 2>"${stderr_file}" 1>"${stdout_file}"
+     ##${origcmd_file} 2>"${stderr_file}" 1>"${stdout_file}"
      cmd_retcode=$?
 
      echo "Return Code:   \"${cmd_retcode}\""
@@ -119,6 +119,7 @@ unstub_command() {
          grep -v "${cmd_to_run_noargs_hash}" "${cache_cmd}" > "${cache_cmd}.tmp"
 
          cat "${cache_cmd}.tmp" > "${cache_cmd}"
+         rm "${cache_cmd}.tmp"
          #echo "Removing link file:            """${binstubs_dir}"""/"""${cmd_to_run_noargs}""""
          #rm "${binstubs_dir}"/"${cmd_to_run_noargs}"
        fi
